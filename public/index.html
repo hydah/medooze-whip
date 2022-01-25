@@ -1,0 +1,194 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
+    <title> webrtc test </title>
+    <style type="text/css">
+        .room {
+            cursor: pointer;
+        }
+
+        div.select {
+            display: inline-block;
+            margin: 0 0 1em 0;
+        }
+    </style>
+
+
+    <script type='text/javascript'>
+        window.localStorage.setItem('debug', '*');
+        let pub_pc = new RTCPeerConnection();
+        let play_pc = new RTCPeerConnection();
+
+        async function publish() {
+            let videoElement = document.getElementById('video_container_publish');
+            let serverurl = document.getElementById("serverurl").value;
+
+            const constraints = {
+                video: { width: { exact: 640 }, height: { exact: 480 } },
+                audio: true
+            }
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+            videoElement.srcObject = stream;
+
+
+            await pub_pc.addTransceiver(stream.getVideoTracks()[0], {
+                direction: "sendonly",
+                streams: [stream],
+            });
+
+            await pub_pc.addTransceiver(stream.getAudioTracks()[0], {
+                direction: "sendonly",
+                streams: [stream],
+            });
+
+
+            const offer = await pub_pc.createOffer();
+            await pub_pc.setLocalDescription(offer);
+
+
+            console.log(offer.sdp);
+
+            let res = await fetch(serverurl + "/rtc/v1/publish", {
+                method: 'post',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    sdp: offer.sdp
+                })
+            })
+
+            console.dir(res)
+
+            console.dir(res)
+            let ret = await res.json()
+
+            let answer = new RTCSessionDescription({
+                type: 'answer',
+                sdp: ret.sdp
+            })
+
+            await pub_pc.setRemoteDescription(answer);
+            console.log("pub answer", ret.sdp);
+        }
+
+        async function unpulish() {
+            await pub_pc.close();
+        }
+
+        async function play() {
+
+            play_pc = new RTCPeerConnection();
+
+            let videoElement = document.getElementById('video_container_play');
+            let serverurl = document.getElementById("serverurl").value;
+
+            await play_pc.addTransceiver("video", {
+                direction: "recvonly",
+            });
+
+            await play_pc.addTransceiver("audio", {
+                direction: "recvonly",
+            });
+
+
+            const offer = await play_pc.createOffer();
+            await play_pc.setLocalDescription(offer);
+
+
+            play_pc.ontrack = (e) => {
+                if (!videoElement.srcObject) {
+                    videoElement.srcObject = e.streams[0]
+                }
+            }
+
+
+            let res = await fetch(serverurl + "/rtc/v1/play", {
+                method: 'post',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    sdp: offer.sdp
+                })
+            })
+
+            let ret = await res.json()
+
+            console.dir(ret)
+
+            let answer = new RTCSessionDescription({
+                type: 'answer',
+                sdp: ret.sdp
+            })
+
+            await play_pc.setRemoteDescription(answer);
+        }
+
+        async function unplay() {
+            await play_pc.close()
+        }
+
+
+    </script>
+
+<style type="text/css">
+    #publish {
+        float: left;
+        width: 50%;
+    }
+
+    #play {
+        float: right;
+        width: 50%;
+    }
+</style>
+
+</head>
+
+<body>
+    <h1>webrtc stream demo</h1>
+    <br />
+
+
+    <div>
+        server addr
+        <form>
+            <input type="text" size="50" id="serverurl" name="serverurl" value="https://9.134.218.127/medooze/"><br><br>
+        </form>
+    </div>
+
+
+
+    <div id="publish">
+        publish:
+        <br />
+        <div id="container">
+            <video id="video_container_publish" playsinline controls autoplay muted width="640" height="480"></video>
+        </div>
+        <button onclick="publish()">Publish</button>
+        <button onclick="unpublish()">UnPublish</button>
+        <br />
+    </div>
+
+
+
+    <div id="play">
+        play:
+        <br />
+        <div id="container">
+            <video id="video_container_play" playsinline controls autoplay muted width="640" height="480"></video>
+        </div>
+        <br />
+        <button onclick="play()">Play</button>
+        <button onclick="unplay()">UnPlay</button>
+    </div>
+
+</body>
+
+
+</html>
