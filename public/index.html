@@ -52,7 +52,7 @@
 
             console.log(offer.sdp);
 
-            let res = await fetch(serverurl + "/rtc/v1/publish", {
+            let res = await fetch(serverurl + "/rtc/v1/whip", {
                 method: 'post',
                 headers: {
                     'Content-Type': 'application/json'
@@ -63,7 +63,7 @@
             })
 
             console.dir(res)
-            
+
             let ret = await res.json()
 
             let answer = new RTCSessionDescription({
@@ -106,7 +106,7 @@
             }
 
 
-            let res = await fetch(serverurl + "/rtc/v1/play", {
+            let res = await fetch(serverurl + "/rtc/v1/whep", {
                 method: 'post',
                 headers: {
                     'Content-Type': 'application/json'

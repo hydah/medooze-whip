@@ -50,7 +50,7 @@ apiRouter.get('/', async (req: Request, res: Response) => {
     res.end(html_list)
 })
 
-apiRouter.post('/rtc/v1/publish', async (req: Request, res: Response) => {
+apiRouter.post('/rtc/v1/whip', async (req: Request, res: Response) => {
     console.log("get publish...")
     const sdp = SDPInfo.process(req.body.sdp)
 
@@ -76,7 +76,7 @@ apiRouter.post('/rtc/v1/publish', async (req: Request, res: Response) => {
     })
 })
 
-apiRouter.post('/rtc/v1/play', async (req: Request, res: Response) => {
+apiRouter.post('/rtc/v1/whep', async (req: Request, res: Response) => {
 
     console.log("get play...")
     const sdp = SDPInfo.process(req.body.sdp)
