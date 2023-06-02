@@ -1,5 +1,5 @@
 export default {
-    endpoint: '9.134.218.127',
+    endpoint: '172.28.224.165',
     bandwidth: 500,
     capabilities:  {
         audio : {

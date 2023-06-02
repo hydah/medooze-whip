@@ -8,7 +8,7 @@ const readdir = promisify(fs.readdir)
 
 const apiRouter = Router()
 
-const MediaServer = require("/data/code/tencent/learning/media-server-node/index")
+const MediaServer = require("medooze-media-server")
 
 const SemanticSDP = require('semantic-sdp')
 
@@ -22,7 +22,7 @@ const TrackInfo = SemanticSDP.TrackInfo
 const Direction = SemanticSDP.Direction
 const CodecInfo = SemanticSDP.CodecInfo
 
-MediaServer.enableDebug(true)
+// MediaServer.enableDebug(true)
 // MediaServer.enableUltraDebug(true)
 
 
@@ -35,7 +35,8 @@ apiRouter.get('/test', async (req: Request, res: Response) => {
 })
 
 apiRouter.get('/', async (req: Request, res: Response) => {
-    const files = await readdir(__dirname + '/../../public');
+    console.log(__dirname)
+    const files = await readdir(__dirname + '/../public');
     console.log(__dirname + './public')
     res.statusCode = 200
     res.type('html');
@@ -77,6 +78,7 @@ apiRouter.post('/rtc/v1/publish', async (req: Request, res: Response) => {
 
 apiRouter.post('/rtc/v1/play', async (req: Request, res: Response) => {
 
+    console.log("get play...")
     const sdp = SDPInfo.process(req.body.sdp)
 
     const transport = endpoint.createTransport(sdp)
