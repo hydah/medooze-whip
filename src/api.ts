@@ -28,7 +28,7 @@ const CodecInfo = SemanticSDP.CodecInfo
 
 const endpoint = MediaServer.createEndpoint(config.endpoint)
 
-let incomingStream;
+let incomingStream = new Map();
 
 apiRouter.get('/test', async (req: Request, res: Response) => {
     res.send('hello world')
@@ -50,13 +50,15 @@ apiRouter.get('/', async (req: Request, res: Response) => {
     res.end(html_list)
 })
 
-apiRouter.post('/rtc/v1/whip', async (req: Request, res: Response) => {
-    console.log("get publish...")
-    const sdp = SDPInfo.process(req.body.sdp)
+// 推流
+apiRouter.post('/rtc/v1/whip/:endpoint', async (req: Request, res: Response) => {
+    const streamName = req.params.endpoint
+    console.log(`get publish sream ${streamName}...`)
+    const sdp = SDPInfo.process(req.body)
 
     const transport = endpoint.createTransport(sdp)
     transport.setRemoteProperties(sdp)
-
+    console.log(">>>> req offer sdp \n", sdp.toString())
 
     const answer = sdp.answer({
         dtls: transport.getLocalDTLSInfo(),
@@ -67,19 +69,31 @@ apiRouter.post('/rtc/v1/whip', async (req: Request, res: Response) => {
 
     transport.setLocalProperties(answer)
 
+    // create stream map entry
     const offerStream = sdp.getFirstStream()
+    const incoming = transport.createIncomingStream(offerStream)
+    incomingStream.set(streamName, incoming)
 
-    incomingStream = transport.createIncomingStream(offerStream)
-
-    res.json({
-        sdp: answer.toString()
-    })
+    console.log("<<<<< res offer sdp\n", sdp.toString())
+    res.type('application/sdp')
+    res.status(201).send(answer.toString())
 })
 
-apiRouter.post('/rtc/v1/whep', async (req: Request, res: Response) => {
+// 推流Update
 
-    console.log("get play...")
-    const sdp = SDPInfo.process(req.body.sdp)
+// 拉流
+apiRouter.post('/rtc/v1/whep/:endpoint', async (req: Request, res: Response) => {
+    const streamName = req.params.endpoint
+    console.log(`get play sream ${streamName}...`)
+
+    if (!incomingStream.has(streamName)) {
+        res.status(404).json({
+            message: 'stream not found'
+        })
+        return
+    }
+
+    const sdp = SDPInfo.process(req.body)
 
     const transport = endpoint.createTransport(sdp)
     transport.setRemoteProperties(sdp)
@@ -93,17 +107,16 @@ apiRouter.post('/rtc/v1/whep', async (req: Request, res: Response) => {
 
     transport.setLocalProperties(answer)
     console.log(transport.getLocalICEInfo().getUfrag())
+
     const outgoing = transport.createOutgoingStream({
         audio: true,
         video: true
     })
+    outgoing.attachTo(incomingStream.get(streamName))
 
-    outgoing.attachTo(incomingStream)
     answer.addStream(outgoing.getStreamInfo())
-
-    res.json({
-        sdp: answer.toString()
-    })
+    res.type('application/sdp')
+    res.status(201).send(answer.toString())
 
 })
 

@@ -8,15 +8,13 @@ import methodOverride = require('method-override')
 import { EventEmitter } from 'events'
 
 import apiRouter from './api'
-import config from './config'
-
 
 export default class Server extends EventEmitter {
 
     private app: express.Application
     private httpServer: http.Server
 
-    
+
     constructor() {
         //create expressjs application
         super()
@@ -25,12 +23,12 @@ export default class Server extends EventEmitter {
 
         //configure application
         this.config()
-        
+
         //add routes
         this.routes()
     }
 
-    public listen(port:number, hostname:string, callback?:(...args: any[]) => void) {
+    public listen(port: number, hostname: string, callback?: (...args: any[]) => void) {
 
         this.httpServer = this.app.listen(port, hostname, callback)
     }
@@ -46,18 +44,30 @@ export default class Server extends EventEmitter {
         this.app.set('trust proxy', true)
 
         //mount json form parser
-        this.app.use(bodyParser.json())
+        this.app.use(express.json())
+
+        this.app.use((req, res, next) => {
+            if (req.headers['content-type'] === 'application/sdp') {
+                console.log("get application/sdp")
+                req.body = '';
+                req.setEncoding('utf8');
+                req.on('data', function (chunk) { req.body += chunk });
+                req.on('end', next);
+            } else {
+                next();
+            }
+        });
 
         //mount query string parser
-        this.app.use(bodyParser.urlencoded({
-            extended: true
-        }))
+        // this.app.use(bodyParser.urlencoded({
+        //     extended: true
+        // }))
 
         //mount override?
         this.app.use(methodOverride())
 
         //catch 404 and forward to error handler
-        this.app.use(function(err: any, req: express.Request, res: express.Response, next: express.NextFunction) {
+        this.app.use(function (err: any, req: express.Request, res: express.Response, next: express.NextFunction) {
             err.status = 404
             next(err)
         })

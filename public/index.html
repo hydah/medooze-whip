@@ -18,12 +18,34 @@
 
     <script type='text/javascript'>
         window.localStorage.setItem('debug', '*');
-        let pub_pc = new RTCPeerConnection();
-        let play_pc = new RTCPeerConnection();
+        let serverurl;
+        let stream_name;
+
+        window.onload = function () {
+            serverurl = document.getElementById("serverurl").value;
+            stream_name = document.getElementById("stream_name").value;
+            console.log(stream_name)
+        }
+
+        async function postAPI(method, url, data, datatype) {
+            console.log(url, data, datatype)
+            let res = await fetch(url, {
+                method: method,
+                headers: {
+                    'content-type': datatype || 'application/sdp'
+                },
+                body: data
+            })
+
+            console.log(res)
+            let response = await res.text()
+
+            return [res.status, response, res.headers.get("Location")]
+        }
 
         async function publish() {
+            let pub_pc = new RTCPeerConnection();
             let videoElement = document.getElementById('video_container_publish');
-            let serverurl = document.getElementById("serverurl").value;
 
             const constraints = {
                 video: { width: { exact: 640 }, height: { exact: 480 } },
@@ -32,47 +54,33 @@
 
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
-            videoElement.srcObject = stream;
+            videoElement.srcObject = stream;333333
 
 
             await pub_pc.addTransceiver(stream.getVideoTracks()[0], {
                 direction: "sendonly",
                 streams: [stream],
             });
-
             await pub_pc.addTransceiver(stream.getAudioTracks()[0], {
                 direction: "sendonly",
                 streams: [stream],
             });
-
 
             const offer = await pub_pc.createOffer();
             await pub_pc.setLocalDescription(offer);
 
 
             console.log(offer.sdp);
-
-            let res = await fetch(serverurl + "/rtc/v1/whip", {
-                method: 'post',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    sdp: offer.sdp
-                })
-            })
-
-            console.dir(res)
-
-            let ret = await res.json()
+            let [code, res, localtion] = await postAPI('post', serverurl + `/rtc/v1/whip/${stream_name}`, offer.sdp)
+            // console.dir(res)
 
             let answer = new RTCSessionDescription({
                 type: 'answer',
-                sdp: ret.sdp
+                sdp: res
             })
 
             await pub_pc.setRemoteDescription(answer);
-            console.log("pub answer", ret.sdp);
+            console.log("pub answer", res);
         }
 
         async function unpulish() {
@@ -81,10 +89,9 @@
 
         async function play() {
 
-            play_pc = new RTCPeerConnection();
+            let play_pc = new RTCPeerConnection();
 
             let videoElement = document.getElementById('video_container_play');
-            let serverurl = document.getElementById("serverurl").value;
 
             await play_pc.addTransceiver("video", {
                 direction: "recvonly",
@@ -105,24 +112,12 @@
                 }
             }
 
-
-            let res = await fetch(serverurl + "/rtc/v1/whep", {
-                method: 'post',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    sdp: offer.sdp
-                })
-            })
-
-            let ret = await res.json()
-
-            console.dir(ret)
+            let [code, res, localtion] = await postAPI('post', serverurl + `/rtc/v1/whep/${stream_name}`, offer.sdp)
+            // console.dir(res)
 
             let answer = new RTCSessionDescription({
                 type: 'answer',
-                sdp: ret.sdp
+                sdp: res
             })
 
             await play_pc.setRemoteDescription(answer);
@@ -135,17 +130,17 @@
 
     </script>
 
-<style type="text/css">
-    #publish {
-        float: left;
-        width: 50%;
-    }
+    <style type="text/css">
+        #publish {
+            float: left;
+            width: 50%;
+        }
 
-    #play {
-        float: right;
-        width: 50%;
-    }
-</style>
+        #play {
+            float: right;
+            width: 50%;
+        }
+    </style>
 
 </head>
 
@@ -158,6 +153,7 @@
         server addr
         <form>
             <input type="text" size="50" id="serverurl" name="serverurl" value="http://127.0.0.1:5000"><br><br>
+            <input type="text" size="50" id="stream_name" name="stream_name" value="medooze_test"><br><br>
         </form>
     </div>
 
